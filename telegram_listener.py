@@ -36,7 +36,7 @@ def parse_signal(text):
     result['sl'] = re.search(r'SL\s*●?\s*([\d.]+)', text)
     result['tp1'] = re.search(r'TP1\s*●?\s*([\d.]+)', text)
     result['tp2'] = re.search(r'TP2\s*●?\s*([\d.]+)', text)
-    # Add more as you much as you need
+    # Add more as needed
     # result['tp3'] = re.search(r'TP3\s*●?\s*([\d.]+)', text)
     # result['tp4'] = re.search(r'TP4\s*●?\s*([\d.]+)', text)
     # result['tp5'] = re.search(r'TP5\s*●?\s*([\d.]+)', text)
