@@ -1,59 +1,64 @@
 import requests
 import time
-import hashlib
 import hmac
+import base64
 import json
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# API Credentials
+# Load API credentials
 API_KEY = os.getenv("BITGET_API_KEY")
 SECRET_KEY = os.getenv("BITGET_API_SECRET")
 PASSPHRASE = os.getenv("BITGET_API_PASSPHRASE")
 
-# Step 1: Generate Signature
-def generate_signature(timestamp, method, request_path, body=""):
-    message = f"{timestamp}{method}{request_path}{body}"
-    signature = hmac.new(
-        SECRET_KEY.encode(), 
-        message.encode(), 
-        hashlib.sha256
-    ).hexdigest()
-    return signature
+BASE_URL = "https://api.bitget.com"
 
-# Step 2: Fetch Account Info
-def get_futures_account_info():
-    # API Endpoint
-    url = "https://api.bitget.com/api/mix/v1/account/accounts"
-    method = "GET"
-    request_path = "/api/mix/v1/account/accounts"
-    
-    # Timestamp (in milliseconds)
-    timestamp = str(int(time.time() * 1000))
-    
-    # Generate signature (empty body for GET requests)
-    signature = generate_signature(timestamp, method, request_path)
-    
-    # Headers
-    headers = {
+def get_timestamp():
+    return str(int(time.time() * 1000))
+
+def sign(message, secret_key):
+    mac = hmac.new(secret_key.encode('utf-8'), message.encode('utf-8'), digestmod='sha256')
+    return base64.b64encode(mac.digest()).decode()
+
+def parse_params_to_str(params):
+    sorted_params = sorted(params.items())
+    return '?' + '&'.join([f"{key}={value}" for key, value in sorted_params])
+
+def generate_headers(method, request_path, body=""):
+    timestamp = get_timestamp()
+    message = f"{timestamp}{method.upper()}{request_path}{body}"
+    signature = sign(message, SECRET_KEY)
+
+    return {
         "ACCESS-KEY": API_KEY,
         "ACCESS-SIGN": signature,
         "ACCESS-TIMESTAMP": timestamp,
         "ACCESS-PASSPHRASE": PASSPHRASE,
         "Content-Type": "application/json"
     }
+
+def get_futures_account_info():
+    method = "GET"
+    base_path = "/api/v2/mix/account/account"
+    params = {
+	"symbol": "btcusdt",
+	"productType": "USDT-FUTURES",
+	"marginCoin": "usdt"
+    }
+    query_str = parse_params_to_str(params)
+    request_path = base_path + query_str
+    url = BASE_URL + request_path
+    print("Request URL:", url)
     
-    # Send request
+
+    headers = generate_headers(method, request_path)
+    print("Headers:", headers)
     response = requests.get(url, headers=headers)
     return response.json()
 
-# Step 3: Execute
 if __name__ == "__main__":
-    try:
-        account_info = get_futures_account_info()
-        print("Futures Account Info:")
-        print(json.dumps(account_info, indent=2))
-    except Exception as e:
-        print(f"Error: {e}")
+    result = get_futures_account_info()
+    print("Futures Account Info:")
+    print(json.dumps(result, indent=2))

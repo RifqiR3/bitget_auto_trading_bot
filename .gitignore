@@ -1,2 +1,4 @@
 #Abaikan .evv
 .env
+venv
+__pycache__
