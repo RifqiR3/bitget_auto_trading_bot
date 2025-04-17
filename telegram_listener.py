@@ -7,7 +7,7 @@ load_dotenv()
 
 api_id = int(os.getenv("TELEGRAM_API_ID"))
 api_hash = os.getenv("TELEGRAM_API_HASH")
-channel_id = -4736754644
+channel_id = -1002635215988
 
 client = TelegramClient('bitget_session', api_id, api_hash)
 

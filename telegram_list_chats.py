@@ -14,5 +14,5 @@ dialogs = client.get_dialogs()
 # print(dialogs)
 
 for dialog in dialogs:
-    if dialog.is_group:
+    if dialog.is_channel:
         print(f"Channel: {dialog.name} | ID: {dialog.id}") 

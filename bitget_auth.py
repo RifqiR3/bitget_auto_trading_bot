@@ -44,15 +44,14 @@ def get_futures_account_info():
     base_path = "/api/v2/mix/account/account"
     params = {
 	"symbol": "btcusdt",
-	"productType": "USDT-FUTURES",
-	"marginCoin": "usdt"
+	"marginCoin": "usdt",
+	"productType": "USDT-FUTURES"
     }
     query_str = parse_params_to_str(params)
     request_path = base_path + query_str
     url = BASE_URL + request_path
     print("Request URL:", url)
     
-
     headers = generate_headers(method, request_path)
     print("Headers:", headers)
     response = requests.get(url, headers=headers)
