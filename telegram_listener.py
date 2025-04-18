@@ -1,5 +1,6 @@
 from telethon import TelegramClient, events
 from dotenv import load_dotenv
+from bitget_order_execute import execute_trade
 import os
 import re
 
@@ -18,19 +19,21 @@ async def handler(event):
 
     print(f"\nMessage from {sender.username or sender.id}: \n{message}\n")
 
-    #Filter pesan tidak nyambung
+    # Filter valid signal messages
     if any(word in message.upper() for word in ['LONG', 'SHORT', 'ENTRY', 'TP']):
         parsed = parse_signal(message)
-        parsed['symbol'] = parsed['symbol'].upper() + "USDT"
-        print("Parsed Signal:", parsed)
+        if all([parsed["direction"], parsed["symbol"], parsed["entry"], parsed["leverage"], parsed["sl"], parsed["tp2"]]):
+            parsed['symbol'] = parsed['symbol'].upper() + "USDT"
+            print("✅ Parsed Signal:", parsed)
+            execute_trade(parsed)  # 👈 BOOM — place the order!
+        else:
+            print("⚠️ Incomplete signal, skipping:", parsed)
 
 def parse_signal(text):
     result = {}
     text = text.upper()
-
-    # Normalize bullet characters and extra spaces
-    text = re.sub(r'[•●]', '•', text)  # normalize bullets
-    text = re.sub(r'\s+', ' ', text)  # normalize all whitespace to single spaces
+    text = re.sub(r'[•●]', '•', text)
+    text = re.sub(r'\s+', ' ', text)
 
     result['direction'] = 'LONG' if 'LONG' in text else 'SHORT' if 'SHORT' in text else None
 
@@ -51,5 +54,5 @@ def parse_signal(text):
     return result
 
 client.start()
-print("Listening to Telegram messages....")
+print("👂 Listening to Telegram messages....")
 client.run_until_disconnected()
