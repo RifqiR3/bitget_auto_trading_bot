@@ -8,12 +8,13 @@ available_balance = float(account_data["data"]["available"])
 
 # 2. Sample signal
 signal = {
-    "direction": "SHORT",
-    "symbol": "LAYER",
-    "entry": "1.835",
+    "direction": "LONG",
+    "symbol": "SFP",
+    "entry": "0.4459",
     "leverage": "20X",
-    "tp1": "1.824",
-    "tp2": "1.814"
+    "sl": "0.4334",
+    "tp1": "0.4484",
+    "tp2": "0.4509"
 }
 
 # 3. Calculate position size based on available balance
@@ -31,5 +32,5 @@ else:
 
 # 4. Place order
 print(direction)
-result = place_order(signal["symbol"], direction, signal["entry"], size)
+result = place_order(signal["symbol"], direction, signal["entry"], size, signal["sl"], signal["tp2"])
 print(json.dumps(result, indent=2))
