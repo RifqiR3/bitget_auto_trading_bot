@@ -14,11 +14,7 @@ client = TelegramClient('bitget_session', api_id, api_hash)
 
 @client.on(events.NewMessage(chats=channel_id))
 async def handler(event):
-    chat = await event.get_chat()
-    print(f"\n📣 Channel Name: {chat.title}")
-    print(f"👤 Message from: {chat.username or chat.id}")
-    print(f"💬 Message:\n{event.raw_text}\n")
-
+    sender = await event.get_sender()
     message = event.raw_text
 
     print(f"\nMessage from {sender.username or sender.id}: \n{message}\n")

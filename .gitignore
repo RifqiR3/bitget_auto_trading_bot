@@ -1,3 +1,5 @@
 #Abaikan .evv
 .env
 venv
+bitget_session.*
+__pycache__
