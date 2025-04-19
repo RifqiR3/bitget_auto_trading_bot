@@ -61,19 +61,17 @@ def place_order(symbol, side, entry_price, size, sl, tp2, margin_coin="USDT", pr
     body_dict = {
         "symbol": symbol.upper() + "USDT",
         "marginCoin": margin_coin,
-	    "marginMode": "crossed",
+	"marginMode": "crossed",
         "size": size,
         "price": entry_price,
-	    "posMode": "single_holding",
+	"posMode": "single_holding",
         "side": side,
         "orderType": "limit",
         "force": "gtc",
         "productType": product_type,
-	    "presetStopSurplusPrice": tp2,
-	    "presetStopLossPrice": sl
+	"presetStopSurplusPrice": tp2,
+	"presetStopLossPrice": sl
     }
-
-    print(body_dict)
 
     body = json.dumps(body_dict)
     request_path = "/api/v2/mix/order/place-order"

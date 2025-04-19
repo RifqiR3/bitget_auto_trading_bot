@@ -8,13 +8,17 @@ load_dotenv()
 
 api_id = int(os.getenv("TELEGRAM_API_ID"))
 api_hash = os.getenv("TELEGRAM_API_HASH")
-channel_id = -4736754644
+channel_id = -1002635215988
 
 client = TelegramClient('bitget_session', api_id, api_hash)
 
 @client.on(events.NewMessage(chats=channel_id))
 async def handler(event):
-    sender = await event.get_sender()
+    chat = await event.get_chat()
+    print(f"\n📣 Channel Name: {chat.title}")
+    print(f"👤 Message from: {chat.username or chat.id}")
+    print(f"💬 Message:\n{event.raw_text}\n")
+
     message = event.raw_text
 
     print(f"\nMessage from {sender.username or sender.id}: \n{message}\n")

@@ -50,10 +50,10 @@ def get_futures_account_info():
     query_str = parse_params_to_str(params)
     request_path = base_path + query_str
     url = BASE_URL + request_path
-    print("Request URL:", url)
+    # print("Request URL:", url)
     
     headers = generate_headers(method, request_path)
-    print("Headers:", headers)
+    # print("Headers:", headers)
     response = requests.get(url, headers=headers)
     return response.json()
 

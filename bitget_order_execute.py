@@ -20,6 +20,6 @@ def execute_trade(signal):
 
     # 4. Place order
     print(f"\nPlacing {direction.upper()} order for {signal['symbol']} at {entry_price} with size {size}")
-    result = place_order(signal["symbol"], direction, signal["entry"], size, signal["sl"], signal["tp2"])
+    result = place_order(signal["symbol"], direction, signal["entry"], str(size), signal["sl"], signal["tp2"])
     print(json.dumps(result, indent=2))
     return result
