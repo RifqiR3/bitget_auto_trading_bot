@@ -23,9 +23,9 @@ async def handler(event):
     if any(word in message.upper() for word in ['LONG', 'SHORT', 'ENTRY', 'TP']):
         parsed = parse_signal(message)
         if all([parsed["direction"], parsed["symbol"], parsed["entry"], parsed["leverage"], parsed["sl"], parsed["tp2"]]):
-            parsed['symbol'] = parsed['symbol'].upper() + "USDT"
+            parsed['symbol'] = parsed['symbol'].upper()
             print("✅ Parsed Signal:", parsed)
-            execute_trade(parsed)  # 👈 BOOM — place the order!
+            execute_trade(parsed)
         else:
             print("⚠️ Incomplete signal, skipping:", parsed)
 
