@@ -6,6 +6,7 @@ import base64
 import json
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
@@ -88,3 +89,17 @@ def place_order(symbol, side, entry_price, size, sl, tp2, margin_coin="USDT", pr
 
     response = requests.post(url, headers=headers, data=body)
     return response.json()
+
+
+def save_order(order_data, filename="active_orders.json"):
+	filepath = Path(filename)
+	if filepath.exists():
+		with open(filepath, "r") as f:
+			orders = json.load(f)
+	else:
+		orders = []
+
+	orders.append(order_data)
+
+	with open(filepath, "w") as f:
+		json.dump(orders, f, indent=2)

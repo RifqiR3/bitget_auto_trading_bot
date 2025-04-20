@@ -3,3 +3,4 @@
 venv
 bitget_session.*
 __pycache__
+active_orders.json

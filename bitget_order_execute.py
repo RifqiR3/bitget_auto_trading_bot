@@ -1,5 +1,5 @@
 from bitget_auth import get_futures_account_info
-from bitget_order import place_order
+from bitget_order import place_order, save_order
 import json
 
 def execute_trade(signal):
@@ -22,4 +22,16 @@ def execute_trade(signal):
     print(f"\nPlacing {direction.upper()} order for {signal['symbol']} at {entry_price} with size {size}")
     result = place_order(signal["symbol"], direction, signal["entry"], str(size), signal["sl"], signal["tp2"])
     print(json.dumps(result, indent=2))
+
+    # 5. Save order to track
+    order_data = {
+    	"symbol": signal["symbol"].upper() + "USDT",
+        "side": direction,
+	"entry": str(signal["entry"]),
+	"tp1": str(signal["tp1"]),
+	"sl": str(signal["sl"]),
+	"orderId": result["data"]["orderId"]
+    }
+    save_order(order_data)
+    print(f"Position {order_data['orderId']} is saved")
     return result
