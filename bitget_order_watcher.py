@@ -2,13 +2,98 @@ import asyncio
 import json
 import websockets
 import os
+import time
+import requests
+import uuid
+from websockets.exceptions import ConnectionClosed
+from bitget_order import get_timestamp, sign, pre_hash, API_KEY, PASSPHRASE, SECRET_KEY
 
 ORDERS_FILE = "active_orders.json"
 
+def is_order_filled(order_id, symbol):
+	url = f"https://api.bitget.com/api/v2/mix/order/detail"
+	method = "GET"
+	timestamp = get_timestamp()
+	query = f"symbol={symbol}&orderId={order_id}&productType=usdt-futures"
+	request_path = f"/api/v2/mix/order/detail?{query}"
+
+	message = pre_hash(timestamp, method, request_path, "")
+	signature = sign(message, SECRET_KEY)
+
+	headers = {
+	  "ACCESS-KEY": API_KEY,
+	  "ACCESS-SIGN": signature,
+	  "ACCESS-TIMESTAMP": timestamp,
+	  "ACCESS-PASSPHRASE": PASSPHRASE,
+	  "Content-Type": "application/json"
+	}
+
+	try:
+		response = requests.get(f"{url}?{query}", headers=headers)
+		data = response.json()
+		if data.get("code") == "00000" and data.get("data"):
+			status = data["data"].get("state")
+			print(f"🔎 Order state ({symbol}): {status}")
+			return status == "filled"
+		else:
+			print(f"⚠️  Error: {data.get('msg')}")
+			return False
+	except Exception as e:
+		print(f"❌ Error checking order status: {e}")
+		return False
+
+def modify_stop_loss(symbol, order_id, new_sl_price):
+	url = "https://api.bitget.com/api/v2/mix/order/place-tpsl-order"
+	method = "POST"
+	timestamp = get_timestamp()
+
+	order = next((o for o in load_orders() if o["orderId"] == order_id), None)
+	if not order:
+		print(f"⚠️ Could not find order with ID {order_id} in active_orders.json")
+		return
+
+	sude = order["side"]
+	hold_side = "long" if side == "buy" else "short"
+
+	body_dict = {
+	  "symbol": symbol,
+	  "marginCoin": "USDT",
+	  "productType": "usdt-futures",
+	  "planType": "pos_loss",
+	  "triggerPrice": str(new_sl_price),
+	  "triggerType": "fill_price",
+	  "holdSide": hold_side,
+	  "size": "",
+	  "clientOid": str(uuid.uuid64())
+	}
+
+	body = json.dumps(body_dict)
+	request_path = "/api/v2/mix/order/place-tpsl-order"
+	message = pre_hash(timestamp, method, request_path, body)
+	signature = sign(message, SECRET_KEY)
+
+	headers = {
+	  "ACCESS-KEY": API_KEY,
+	  "ACCESS-SIGN": signature,
+	  "ACCESS-TIMESTAMP": timestamp,
+	  "ACCESS-PASSPHRASE": PASSPHRASE,
+	  "Content-Type": "application/json"
+	}
+
+	try:
+		response = requests.post(url, headers=headers, data=body)
+		data = response.json()
+		if data.get("code") == "00000":
+			print(f"✅ SL moved to breakeven ({new_sl_price}) for {symbol} ({order_id})")
+		else:
+			print(f"⚠️ Failed to modify SL via trigger order: {data.get('msg')}")
+	except Exception as e:
+		print(f"❌ Error modifying SL trigger order: {e}")
+
 # Load active orders from the file
-def load_order():
-	if os.path.exists(ORDER_FILE)
-		with open(ORDER_FILE, "r") as f:
+def load_orders():
+	if os.path.exists(ORDERS_FILE):
+		with open(ORDERS_FILE, "r") as f:
 			return json.load(f)
 
 	return []
@@ -21,14 +106,25 @@ def save_orders(orders):
 
 # Subscribe to tickers for all tracked symbols in the file
 def build_sub_payload(symbols):
-	args = [{"instId": s, "channel": "ticker"} for s in symbols]
+	args = [{"instType": "USDT-FUTURES", "channel": "ticker", "instId": s} for s in symbols]
 	return {
 	"op": "subscribe",
 	"args": args
 	}
 
+async def connect_and_watch():
+	while True:
+		try:
+			await watch_orders()
+		except ConnectionClosed as e:
+			print(f"🔌 WebSocket disconnected: {e}. Reconnecting in 5s...")
+			await asyncio.sleep(5)
+		except Exception as e:
+			print(f"❌ Unexpected error: {e}. Restarting in 5s...")
+			await asyncio.sleep(5)
+
 async def watch_orders():
-	url = "wss://ws.bitget.com/mix/v1/stream"
+	url = "wss://ws.bitget.com/v2/ws/public"
 
 	orders = load_orders()
 	if not orders:
@@ -45,37 +141,48 @@ async def watch_orders():
 			msg = await ws.recv()
 			data = json.loads(msg)
 
-			if "data" in data:
-				tick = data["data"]
-				symbol = data["args"]["instId"]
-				price = float(tick["last"])
+			if "data" in data and "arg" in data:
+				tick = data["data"][0]
+				symbol = data["arg"]["instId"]
+				price = float(tick["lastPr"])
 
-			updated_orders = []
-			for order in orders:
-				if order["symbol"] != symbol:
-					updated_orders.append()
-					continue
+				print(f"[{symbol}] 💹 Price: {price}")
 
-				entry = float(order("entry"))
-				tp1 = float(order["tp1"])
-				sl = float(order["sl"])
-				order_id = order["orderId"]
-				side = order["side"]
+				updated_orders = []
+				for order in orders:
+					if order["symbol"] != symbol:
+						updated_orders.append(order)
+						continue
 
-				tp_hit = price >= tp1 if side == "buy" else price <= tp1
-				sl_hit = price <= sl if side == "buy" else price >= sl
+					entry = float(order["entry"])
+					tp1 = float(order["tp1"])
+					sl = float(order["sl"])
+					order_id = order["orderId"]
+					side = order["side"]
 
-				if tp_hit:
-					print(f"🎯 TP1 hit for {symbol} ({order_id})! Moving SL to breakeven.")
-					order["sl"] = entry
-					updated_orders.append(order)
-				elif sl_hit:
-					print(f"🛑 SL hit for {symbol} ({order_id})! Removing order.")
-				else:
-					updated.orders.append(order)
+					if not order.get("filled"):
+						if is_order_filled(order["orderId"], order["symbol"]):
+							print(f"✅ Order {order['orderId']} is filled. Tracking started. ")
+							order["filled"] = True
+						updated_orders.append(order)
+						continue
 
-			if updated_orders != orders:
-				save_orders(updated_orders)
-				orders = updated_orders
+					tp_hit = price >= tp1 if side == "buy" else price <= tp1
+					sl_hit = price <= sl if side == "buy" else price >= sl
 
-asyncio.run(watch_orders())
+					if tp_hit:
+						print(f"🎯 TP1 hit for {symbol} ({order_id})! Moving SL to breakeven.")
+						modify_stop_loss(symbol, order_id, entry)
+						order["sl"] = entry
+						updated_orders.append(order)
+					elif sl_hit:
+						print(f"🛑 SL hit for {symbol} ({order_id})! Removing order.")
+						continue
+					else:
+						updated_orders.append(order)
+
+				if updated_orders != orders:
+					save_orders(updated_orders)
+					orders = updated_orders
+
+asyncio.run(connect_and_watch())

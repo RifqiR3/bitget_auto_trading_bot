@@ -30,7 +30,8 @@ def execute_trade(signal):
 	"entry": str(signal["entry"]),
 	"tp1": str(signal["tp1"]),
 	"sl": str(signal["sl"]),
-	"orderId": result["data"]["orderId"]
+	"orderId": result["data"]["orderId"],
+	"filled": "false"
     }
     save_order(order_data)
     print(f"Position {order_data['orderId']} is saved")
