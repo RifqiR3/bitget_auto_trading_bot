@@ -1,8 +1,9 @@
 from bitget_auth import get_futures_account_info
-from bitget_order import place_order, save_order
+from bitget_order import place_order, save_order, format_price, symbol_precisions
 import json
 
 def execute_trade(signal):
+    precision = symbol_precisions.get(signal["symbol"].upper() + "USDT")
     # 1. Get account info
     account_data = get_futures_account_info()
     available_balance = float(account_data["data"]["available"])
@@ -27,11 +28,13 @@ def execute_trade(signal):
     order_data = {
     	"symbol": signal["symbol"].upper() + "USDT",
         "side": direction,
-	"entry": str(signal["entry"]),
-	"tp1": str(signal["tp1"]),
-	"sl": str(signal["sl"]),
+	"entry": format_price(signal["entry"], precision, direction),
+	"tp1": format_price(signal["tp1"], precision, direction),
+	"tp2": format_price(signal["tp2"], precision, direction),
+	"sl": format_price(signal["sl"], precision, "buy" if direction == "sell" else "sell"),
 	"orderId": result["data"]["orderId"],
-	"filled": "false"
+	"tp1_hit": False,
+	"filled": False
     }
     save_order(order_data)
     print(f"Position {order_data['orderId']} is saved")

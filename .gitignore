@@ -2,5 +2,5 @@
 .env
 venv
 bitget_session.*
-__pycache__
+__pycache__/
 active_orders.json

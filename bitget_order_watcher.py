@@ -52,8 +52,8 @@ def modify_stop_loss(symbol, order_id, new_sl_price):
 		print(f"⚠️ Could not find order with ID {order_id} in active_orders.json")
 		return
 
-	sude = order["side"]
-	hold_side = "long" if side == "buy" else "short"
+	side = order["side"]
+	# hold_side = "long" if side == "buy" else "short"
 
 	body_dict = {
 	  "symbol": symbol,
@@ -62,9 +62,9 @@ def modify_stop_loss(symbol, order_id, new_sl_price):
 	  "planType": "pos_loss",
 	  "triggerPrice": str(new_sl_price),
 	  "triggerType": "fill_price",
-	  "holdSide": hold_side,
+	  "holdSide": side,
 	  "size": "",
-	  "clientOid": str(uuid.uuid64())
+	  "clientOid": str(uuid.uuid4())
 	}
 
 	body = json.dumps(body_dict)
@@ -138,6 +138,7 @@ async def watch_orders():
 		print(f"📡 Subscribed to: {symbols}")
 
 		while True:
+			orders_changed = False
 			msg = await ws.recv()
 			data = json.loads(msg)
 
@@ -156,32 +157,42 @@ async def watch_orders():
 
 					entry = float(order["entry"])
 					tp1 = float(order["tp1"])
+					tp2 = float(order["tp2"])
 					sl = float(order["sl"])
 					order_id = order["orderId"]
 					side = order["side"]
 
 					if not order.get("filled"):
 						if is_order_filled(order["orderId"], order["symbol"]):
-							print(f"✅ Order {order['orderId']} is filled. Tracking started. ")
 							order["filled"] = True
+							orders_changed = True
+							print(f"✅ Order {order['orderId']} is filled. Tracking started. ")
 						updated_orders.append(order)
 						continue
 
 					tp_hit = price >= tp1 if side == "buy" else price <= tp1
+					tp2_hit = price >= tp2 if side == "buy" else price <= tp2
 					sl_hit = price <= sl if side == "buy" else price >= sl
 
-					if tp_hit:
+					if tp_hit and not order["tp1_hit"]:
 						print(f"🎯 TP1 hit for {symbol} ({order_id})! Moving SL to breakeven.")
-						modify_stop_loss(symbol, order_id, entry)
 						order["sl"] = entry
+						order["tp1_hit"] = True
+						orders_changed = True
 						updated_orders.append(order)
+						modify_stop_loss(symbol, order_id, entry)
+					elif tp2_hit and order["tp1_hit"]:
+						print(f"🎯 TP2 hit for {symbol} ({order_id})! Removing order.")
+						orders_changed = True
+						continue
 					elif sl_hit:
 						print(f"🛑 SL hit for {symbol} ({order_id})! Removing order.")
+						orders_changed = True
 						continue
 					else:
 						updated_orders.append(order)
 
-				if updated_orders != orders:
+				if orders_changed:
 					save_orders(updated_orders)
 					orders = updated_orders
 

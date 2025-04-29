@@ -21,7 +21,7 @@ async def handler(event):
     print(f"\nMessage from {sender.username or sender.id}: \n{message}\n")
 
     # Filter valid signal messages
-    if any(word in message.upper() for word in ['LONG', 'SHORT', 'ENTRY', 'TP']):
+    if any(word in message.upper() for word in ['LONG', 'SHORT', 'SPOT', 'ENTRY', 'TP']):
         parsed = parse_signal(message)
         if all([parsed["direction"], parsed["symbol"], parsed["entry"], parsed["leverage"], parsed["sl"], parsed["tp2"]]):
             parsed['symbol'] = parsed['symbol'].upper()
@@ -36,9 +36,16 @@ def parse_signal(text):
     text = re.sub(r'[•●]', '•', text)
     text = re.sub(r'\s+', ' ', text)
 
-    result['direction'] = 'LONG' if 'LONG' in text else 'SHORT' if 'SHORT' in text else None
+    if 'LONG' in text:
+        result['direction'] = 'LONG'
+    elif 'SHORT' in text:
+        result['direction'] = 'SHORT'
+    elif 'SPOT' in text:
+        result['direction'] = 'LONG'
+    else:
+        result['direction'] = None
 
-    symbol_match = re.search(r'\$([A-Z]+)', text)
+    symbol_match = re.search(r'\$([A-Z0-9]+)', text)
     entry_match = re.search(r'ENTRY\s*•\s*([\d.]+)', text)
     leverage_match = re.search(r'LEVERAGE\s*•\s*(\d+X)', text)
     sl_match = re.search(r'SL\s*•\s*([\d.]+)', text)
@@ -47,7 +54,7 @@ def parse_signal(text):
 
     result['symbol'] = symbol_match.group(1) if symbol_match else None
     result['entry'] = entry_match.group(1) if entry_match else None
-    result['leverage'] = leverage_match.group(1) if leverage_match else None
+    result['leverage'] = leverage_match.group(1) if leverage_match else "20X"
     result['sl'] = sl_match.group(1) if sl_match else None
     result['tp1'] = tp1_match.group(1) if tp1_match else None
     result['tp2'] = tp2_match.group(1) if tp2_match else None

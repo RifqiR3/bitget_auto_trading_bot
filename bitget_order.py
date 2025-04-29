@@ -5,8 +5,10 @@ import hashlib
 import base64
 import json
 import os
+import requests
 from dotenv import load_dotenv
 from pathlib import Path
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 
 load_dotenv()
 
@@ -54,10 +56,70 @@ def change_to_unilateral():
     response = requests.post(url, headers=headers, data=body)
     return response.json()
 
+def format_price(price, precision, side):
+    """
+    Formats price based on precision and side (buy/sell).
+    Buys round DOWN, sells round UP.
+    """
+
+    price = str(price)
+    if '.' in price:
+        whole, decimals = price.split('.')
+        if len(decimals) > precision:
+           quantize_str = '0.' + '0' * (precision - 1) + '1'  # e.g., '0.01' if precision=2
+           decimal_price = Decimal(str(price))
+
+           if side == "buy":
+              rounded = decimal_price.quantize(Decimal(quantize_str), rounding=ROUND_DOWN)
+           else:
+              rounded = decimal_price.quantize(Decimal(quantize_str), rounding=ROUND_UP)
+
+           return str(rounded)
+        else:
+           return str(price)
+    else:
+        return str(price)
+
+def fetch_symbol_precisions():
+    url = "https://api.bitget.com/api/v2/mix/market/contracts"
+    params = {"productType": "usdt-futures"}
+
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+
+        if data.get("code") == "00000":
+            precisions = {}
+            for item in data["data"]:
+                symbol = item["symbol"]
+                price_place = item["pricePlace"]
+                precisions[symbol] = price_place
+            return precisions
+        else:
+            print(f"⚠️ Failed to fetch precisions: {data.get('msg')}")
+            return {}
+    except Exception as e:
+        print(f"❌ Error fetching symbol precisions: {e}")
+        return {}
+
+symbol_precisions = fetch_symbol_precisions()
+
+
 def place_order(symbol, side, entry_price, size, sl, tp2, margin_coin="USDT", product_type="USDT-FUTURES"):
     url = BASE_URL + "/api/v2/mix/order/place-order"
     method = "POST"
     timestamp = get_timestamp()
+
+    # Get prices precision
+    precision = symbol_precisions.get(symbol.upper() + "USDT")
+
+    # Format prices
+    entry_price = format_price(entry_price, precision, side)
+    sl = format_price(sl, precision, "buy" if side == "sell" else "sell")
+    tp2 = format_price(tp2, precision, side)
+    print(entry_price)
+    print(tp2)
+    print(sl)
 
     body_dict = {
         "symbol": symbol.upper() + "USDT",
